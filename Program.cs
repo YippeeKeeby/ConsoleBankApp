@@ -10,6 +10,8 @@ Operations: CRUD(Add Customer, Delete, Update, View All Accounts)
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using static System.Runtime.Serialization.ISerializable;
+using System.Text.RegularExpressions;
 
 Main.main();
 
@@ -22,12 +24,6 @@ public class Main{
     {
         makeCustomers(3);
         welcome();
-
-        while (state != "Exit")
-        {
-            Console.WriteLine("Type Exit to quit or press Enter to continue.");
-            state = Console.ReadLine() ?? string.Empty;
-        }
     }
     public static void welcome()
     {
@@ -40,7 +36,7 @@ public class Main{
        }
        else if (result is Customer)
         {
-            customerDashboard(result);
+            customerDashboard(result as Customer);
         }
         else{
             Console.WriteLine("None");
@@ -56,7 +52,8 @@ public class Main{
 
         if (split_index == -1)
         {
-            return "Invalid input format. Please enter username and password separated by a space.";
+            Console.WriteLine("Invalid input format. Please enter username and password separated by a space.");
+            return null;
         }
 
         String username = all.Substring(0, split_index);
@@ -89,6 +86,7 @@ public class Main{
             Console.WriteLine("1) Create Account\n2) View All Accounts\n3) Deposit\n4) Withdraw\n5) Transfer\n6) Close Account\n7) Exit.");
             choice = Console.ReadLine();
 
+            List<Account> pair;
             switch (choice)
             {
                 case "1":
@@ -102,26 +100,29 @@ public class Main{
                     {
                         c.AddAccount("Saving");
                     }
+                    continue;
 
                 case "2":
-                    foreach (Account account in c.accounts){
-                        account.PrintAccount();
-                    }
+                    c.PrintAccounts();
+                    continue;
                 case "3":
-                    Console.WriteLine("Where are you Depositing from?");
+                    pair = c.getCandidateAccounts("Deposit");
 
-                    Console.WriteLine("Where will you Deposit from?");
+                    continue;
+
                 case "4":
-                    Console.WriteLine("Where are you Withdrawing from?");
+                    pair = c.getCandidateAccounts("Withdraw");
+
+                    continue;
                 case "5":
-                    Console.WriteLine("Where are you Transfering from?");
+                    pair = c.getCandidateAccounts("Transfer");
+
+                    continue;
                 case "6":
                     Console.WriteLine("Which account will you close?");
+                    continue;
             }
         }
-        
-
-
     }
 
     private static void makeCustomers(int amount)
@@ -143,7 +144,7 @@ public class Main{
 #region Account
 abstract class Account
 {
-    protected int id;
+    public int id;
     protected double balance;
     public abstract string AccountType { get; }
 
@@ -151,6 +152,15 @@ abstract class Account
         this.id = id;
         this.balance = 0;
     }
+    public Account(int id){
+        this.id = id;
+        this.balance = 0;
+    }
+    public Account(){
+        this.id = 0;
+        this.balance = 0;
+    }
+
     public virtual void Deposit(double amount)
     {
         balance += amount;
@@ -170,6 +180,11 @@ class CheckingAccount : Account
 {
     public override string AccountType => "CheckingAccount";
     private decimal overdraft_limit = 0.25m;
+
+    public CheckingAccount(){
+        this.id = 0;
+        this.balance = 0;
+    }
 
     public CheckingAccount(int id){
         this.id = id;
@@ -200,7 +215,10 @@ class SavingsAccount : Account
     public override string AccountType => "SavingsAccount";
     private double interest_rate = 0.02;
 
-
+    public SavingsAccount(){
+        this.id = 0;
+        this.balance = 0;
+    }
     public SavingsAccount(int id){
         this.id = id;
         this.balance = 0;
@@ -256,7 +274,7 @@ class Customer : User
         this.last_name = last_name;
         this.username = username;
         this.password = password;
-        this.accounts = new List<Account> { new CheckingAccount(), new SavingsAccount() };
+        this.accounts = new List<Account> { new CheckingAccount(0), new SavingsAccount(1) };
     }
 
     public bool verify(String username, String password)
@@ -293,23 +311,33 @@ class Customer : User
         return null;
     }
 
-    public Account getCandidateAccounts(String action)
+    public List<Account> getCandidateAccounts(String action)
     {
+        List<Account> pair = new List<Account>();
+
         Console.WriteLine($"Where are you {action}ing from?");
-        int first_id = Console.ReadLine();
-        Account first = getAccount(Regex.Match(first_id, @"\d+").Value);
+        String first_id = Console.ReadLine();
+        Account first = getAccount(int.Parse(Regex.Match(first_id, @"\d+").Value));
         if (first == null){
-            return;
+            return null;
         }
 
         Console.WriteLine($"Where will you {action} to?");
-        int second_id = Console.ReadLine();
-        Account second = getAccount(Regex.Match(second_id, @"\d+").Value);
+        String second_id = Console.ReadLine();
+        Account second = getAccount(int.Parse(Regex.Match(second_id, @"\d+").Value));
         if (second == null){
-            return;
+            return null;
         }
 
-        return [first, second];
+        pair.Add(first);
+        pair.Add(second);
+        return pair;
+    }
+
+    public void PrintAccounts(){
+        foreach (Account account in this.accounts){
+            account.PrintAccount();
+        }
     }
 }
 
